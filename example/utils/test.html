@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Private Key Management</title>
+</head>
+<body>
+  <h1>Private Key Management</h1>
+
+  <h2>Store Private Key</h2>
+  <input type="password" id="privateKeyInput" placeholder="Enter private key">
+  <input type="password" id="passwordInput" placeholder="Enter password">
+  <button id="storeButton">Store Private Key</button>
+
+  <h2>Initiate Swap</h2>
+  <form id="keyForm">
+    <input type="password" id="passwordInput" placeholder="Enter password">
+    <button type="submit">Initiate Swap</button>
+  </form>
+
+  <script src="script.js"></script>
+  <script>
+    document.getElementById('storeButton').addEventListener('click', storePrivateKey);
+  </script>
+</body>
+</html>

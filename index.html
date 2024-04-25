@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Python Interactive Shell</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/ace.js"></script>
+
+    <script>
+    if (typeof exports === 'undefined') {
+        var exports = {};
+    }
+    </script>
+    <script src=dist/bundle.js></script>
+
+
+
+    <style>
+        pre {
+            margin: 0;
+            padding: 0;
+        }
+        .prompt {
+            margin-right: 5px;
+        }
+        #win-python-ace-editor {
+            width: 100%;
+            height: 400px;
+        }
+    </style>
+
+</head>
+<body>
+    <div id="win-python"></div>
+    <div id="win-python-ace-editor"></div>
+    <button onclick="apps.pythonEditor.run()">Run</button>
+    <pre id="output"></pre>
+
+
+    <script>
+        const apps = {
+            python: {
+                codeCache: ``,
+                prompt: '>>> ',
+                indent: false,
+                pyodide: null,
+                loaded: false,
+                load: async function() {
+                    this.pyodide = await loadPyodide();
+
+                    await this.pyodide.loadPackage(['micropip', 'matplotlib']);
+                    await this.pyodide.runPythonAsync(`
+                        import io
+                        import os
+                        import sys
+                        import micropip
+                        await micropip.install('requests')
+                    `);
+                    this.pyodide.globals.set("buy", MyLibrary.buy);
+
+                    // Confirm the environment is ready
+                    console.log('Pyodide, requests, and matplotlib are loaded');
+                },
+                init: function() {
+                    $('#win-python').html(`
+                        <pre>
+                        Python 3.10.2  [MSC v.1912 64 bit (AMD64)] :: Anaconda, Inc. on win32
+                        Type "help", "copyright", "credits" or "license" for more information.
+                        </pre>
+                        <pre class="text-cmd"></pre>
+                        <pre style="display: flex;"><span class='prompt'>>>> </span><input type="text" onkeyup="if (event.keyCode == 13) { apps.python.run(); }"></pre>
+                    `);
+                },
+                run: function() {
+                    if (this.pyodide) {
+                        const input = $('#win-python>pre>input');
+                        const _code = input.val() || this.codeCache;  // Use codeCache if _code is empty
+                        const elt = $('#win-python>pre.text-cmd')[0];
+                        var newD = document.createElement('div');
+                        newD.innerText = `${this.prompt}${_code}`;
+                        elt.appendChild(newD);
+                        input.val('');
+                        this.prompt = '>>> ';
+                        this.pyodide.runPython('sys.stdout = io.StringIO()');
+                        try {
+                            const result = String(this.pyodide.runPython(_code));
+                            if (this.pyodide.runPython('sys.stdout.getvalue()')) {
+                                var newD = document.createElement('div');
+                                newD.innerText = `${this.pyodide.runPython('sys.stdout.getvalue()')}`;
+                                elt.appendChild(newD);
+                            }
+                            if (result && result != 'undefined') {
+                                var newD = document.createElement('div');
+                                newD.innerText = result;
+                                elt.appendChild(newD);
+                            }
+                        } catch (err) {
+                            var newD = document.createElement('div');
+                            newD.innerText = `${err.message}`;
+                            elt.appendChild(newD);
+                        }
+                        this.codeCache = ''; // Clear the code cache after execution
+                        input.focus();
+                        $('#win-python .prompt')[0].innerText = this.prompt;
+                    }
+                }
+            },
+            pythonEditor: {
+                editor: null,
+                init: () => {
+                    return null;
+                },
+                run: () => {
+                    let result;
+                    let output = document.getElementById("output");
+                    try {
+                        if (apps.python.pyodide) {
+                            let code = apps.pythonEditor.editor.getValue();
+                            apps.python.pyodide.runPython('sys.stdout = io.StringIO()');
+                            apps.python.pyodide.runPython(code);
+                            result = apps.python.pyodide.runPython('sys.stdout.getvalue()');
+                        }
+                    }
+                    catch (e) {
+                        result = e.message;
+                    }
+                    output.innerHTML = result;
+                },
+                load: () => {
+                    ace.require("ace/ext/language_tools");
+                    apps.pythonEditor.editor = ace.edit("win-python-ace-editor");
+                    apps.pythonEditor.editor.session.setMode("ace/mode/python");
+                    apps.pythonEditor.editor.setTheme("ace/theme/vibrant_ink");
+                    apps.pythonEditor.editor.setOptions({
+                        enableBasicAutocompletion: true,
+                        enableSnippets: true,
+                        showPrintMargin: false,
+                        enableLiveAutocompletion: true
+                    });
+                }
+            }
+        };
+
+        $(document).ready(async function() {
+            await apps.python.load();
+            apps.python.init();
+            apps.pythonEditor.load();
+        });
+    </script>
+
+
+</body>
+</html>
